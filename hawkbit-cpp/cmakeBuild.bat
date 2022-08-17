@@ -1,0 +1,1 @@
+cmake -DOPENSSL_ROOT_DIR=J:\RtSoft_practic\hawkbit\vendors\vcpkg\installed\x64-windows\tools\openssl -DOPENSSL_LIBRARIES=J:\RtSoft_practic\hawkbit\vendors\vcpkg\installed\x64-windows\lib -DBUILD_SHARED_LIBS=YES -DCMAKE_BUILD_TYPE=Release -S . -B Release  -DVCPKG_TARGET_TRIPLET=x64-windows

@@ -1,0 +1,74 @@
+#!/bin/bash
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+OUTPUT_DIR="output"
+TMP_DIR=".tmp_crt"
+
+
+usage() { echo "Usage:"; echo "$0 -c <intermediate certificate path> -k <intermediate key path> -t <tenant> -n <name>" 1>&2; exit 1; }
+
+while getopts ":c:k:t:n:" o; do
+  case "${o}" in
+    c)
+        c=${OPTARG}
+        ;;
+    k)
+        k=${OPTARG}
+        ;;
+    t)
+        t=${OPTARG}
+        ;;
+    n)
+        n=${OPTARG}
+        ;;
+    *)
+        usage
+        ;;
+  esac
+done
+shift $((OPTIND-1))
+
+if [ -z "${c}" ] || [ -z "${k}" ] || [ -z "${t}" ] || [ -z "${n}" ]; then
+    usage
+fi
+
+CA_CRT="$c"
+CA_KEY="$k"
+
+if [ ! -f "$CA_CRT" ] || [ ! -f "$CA_KEY" ]; then
+  echo "key or certificate not exist"
+  exit 3
+fi
+
+if [[ ! $n =~ ^([a-z](-?[a-z0-9])*)+$ ]]; then
+    echo "$n is not valid subdomain"
+    exit 1
+fi
+
+rm -rf "${SCRIPT_DIR:?}/$TMP_DIR"
+mkdir "$SCRIPT_DIR/$TMP_DIR"
+
+cp "$CA_KEY" "$SCRIPT_DIR/$TMP_DIR"/.
+cp "$CA_CRT" "$SCRIPT_DIR/$TMP_DIR"/.
+
+cat > "$SCRIPT_DIR/$TMP_DIR/leaf.tpl" <<EOF
+{
+	"subject": {
+		"commonName": "{{ .Subject.CommonName }}",
+		"organizationalUnit": "${t}"
+	},
+{{- if typeIs "*rsa.PublicKey" .Insecure.CR.PublicKey }}
+	"keyUsage": ["keyEncipherment", "digitalSignature"],
+{{- else }}
+	"keyUsage": ["digitalSignature"],
+{{- end }}
+	"extKeyUsage": ["clientAuth"]
+}
+EOF
+
+rm -rf "${SCRIPT_DIR:?}/$OUTPUT_DIR"
+mkdir "$SCRIPT_DIR/$OUTPUT_DIR"
+docker run -it --rm -v "$SCRIPT_DIR/$TMP_DIR":/home/step/certs -v "$SCRIPT_DIR/$OUTPUT_DIR":/home/step/certs-gen smallstep/step-ca step certificate create "$n" "certs-gen/${n}.crt" "certs-gen/${n}.key" --kty RSA --template certs/leaf.tpl --ca certs/intermediate-ca.crt --ca-key certs/intermediate-ca.key --insecure --no-password --not-after 43830h
+
+rm -rf "$SCRIPT_DIR/$OUTPUT_DIR/${n}.key"
+rm -rf "${SCRIPT_DIR:?}/$TMP_DIR"

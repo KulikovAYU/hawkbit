@@ -1,0 +1,10 @@
+build
+.vscode
+.idea
+cmake-build-debug
+*.crt
+*.key
+.scannerwork
+client.conf
+.tmp_crt
+output

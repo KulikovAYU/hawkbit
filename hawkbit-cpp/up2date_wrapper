@@ -1,0 +1,10 @@
+#!/bin/bash
+
+CONF_PATH=/opt/conf/client.conf
+
+export CERT_PATH=/opt/cert
+jq -r '.certificate' "$CONF_PATH" > "$CERT_PATH"
+export PROVISIONING_ENDPOINT="$(jq -r '.provisioning_endpoint' "$CONF_PATH")"
+export X_APIG_TOKEN="$(jq -r '.x_apig_token' "$CONF_PATH")"
+
+exec /opt/up2date
